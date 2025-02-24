@@ -1,45 +1,60 @@
 import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Arrays;
 
 public class MUDController {
-    private Player player;
+    private String currentRoom;
+    private List<String> inventory;
     private boolean running;
-    private Scanner scanner;
+    private List<String> roomItems;
+    private String previousRoom;
 
-    public MUDController(Player player) {
-        this.player = player;
-        this.running = true;
-        this.scanner = new Scanner(System.in);
+    public MUDController() {
+        this.currentRoom = "You are at the entrance of a mysterious cave.";
+        this.inventory = new ArrayList<>();
+        this.roomItems = new ArrayList<>(Arrays.asList("Torch", "Shield"));
+        this.previousRoom = null;
     }
 
     public void runGameLoop() {
-        System.out.println("Welcome to the MUD game! Type 'help' for commands.");
+        running = true;
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Welcome to the MUD Game!");
+        System.out.println("Available commands: look, move <direction>, pick up <item>, inventory, help, exit");
+        System.out.println("Type 'help' for more details.");
+
         while (running) {
             System.out.print("> ");
-            String input = scanner.nextLine().trim().toLowerCase();
+            String input = scanner.nextLine().trim();
             handleInput(input);
         }
+        System.out.println("Game over. See you next time!");
     }
 
     private void handleInput(String input) {
         String[] parts = input.split(" ", 2);
-        String command = parts[0];
-        String argument = "";
-        if (parts.length > 1) {
-            argument = parts[1];
-        }
+        String command = parts[0].toLowerCase();
+        String argument = parts.length > 1 ? parts[1] : null;
 
         switch (command) {
             case "look":
                 lookAround();
                 break;
             case "move":
-                move(argument);
+                if (argument != null) {
+                    move(argument.toLowerCase());
+                } else {
+                    System.out.println("Move where?");
+                }
                 break;
             case "pick":
-                if (argument.startsWith("up ")) {
+                if (argument != null && argument.startsWith("up ")) {
                     pickUp(argument.substring(3));
                 } else {
-                    System.out.println("Invalid command. Did you mean 'pick up <item>'?");
+                    System.out.println("Pick up what?");
                 }
                 break;
             case "inventory":
@@ -49,63 +64,83 @@ public class MUDController {
                 showHelp();
                 break;
             case "exit":
-            case "quit":
                 running = false;
-                System.out.println("Exiting game. Goodbye!");
                 break;
             default:
-                System.out.println("Unknown command. Type 'help' for a list of commands.");
+                System.out.println("Unrecognized command.");
         }
     }
 
     private void lookAround() {
-        Room room = player.getCurrentRoom();
-        System.out.println(room.describe());
+        System.out.println(currentRoom);
+        if (!roomItems.isEmpty()) {
+            System.out.println("Objects nearby: " + String.join(", ", roomItems));
+        } else {
+            System.out.println("There are no items here.");
+        }
     }
 
     private void move(String direction) {
-        if (direction.isEmpty()) {
-            System.out.println("Move where? Usage: move <direction>");
-            return;
-        }
+        previousRoom = currentRoom;
+        roomItems.clear();
 
-        Room nextRoom = player.getCurrentRoom().getConnectedRoom(direction);
-        if (nextRoom != null) {
-            player.setCurrentRoom(nextRoom);
-            System.out.println("You move " + direction + ".");
-            lookAround();
-        } else {
-            System.out.println("You can't go that way!");
+        switch (direction) {
+            case "north":
+                currentRoom = "A dark tunnel leading deeper into the cave.";
+                roomItems.add("Key");
+                break;
+            case "south":
+                currentRoom = "You are at the entrance of a mysterious cave.";
+                roomItems.add("Torch");
+                roomItems.add("Shield");
+                break;
+            case "east":
+                currentRoom = "A hidden chamber filled with ancient relics.";
+                roomItems.add("Golden Idol");
+                break;
+            case "west":
+                currentRoom = "A narrow passage with strange carvings on the walls.";
+                roomItems.add("Map");
+                break;
+            default:
+                System.out.println("That path is blocked.");
+                return;
         }
+        System.out.println("You move " + direction + ".");
+        lookAround();
     }
 
     private void pickUp(String itemName) {
-        if (itemName.isEmpty()) {
-            System.out.println("Pick up what?");
-            return;
+        for (String item : new ArrayList<>(roomItems)) {
+            if (item.equalsIgnoreCase(itemName)) {
+                roomItems.remove(item);
+                inventory.add(item);
+                System.out.println("You picked up " + item + ".");
+                return;
+            }
         }
-
-        Room room = player.getCurrentRoom();
-        Item item = room.get(itemName);
-        if (item != null) {
-            room.remove(item);
-            player.addItem(item);
-            System.out.println("You pick up the " + itemName + ".");
-        } else {
-            System.out.println("No item named '" + itemName + "' here!");
-        }
+        System.out.println("No such item found.");
     }
 
     private void checkInventory() {
-        System.out.println("You are carrying: " + player.getInventoryString());
+        if (inventory.isEmpty()) {
+            System.out.println("You are carrying nothing.");
+        } else {
+            System.out.println("You are carrying: " + String.join(", ", inventory));
+        }
     }
 
     private void showHelp() {
         System.out.println("Available commands:");
-        System.out.println("look - Describes the current room");
-        System.out.println("move <direction> - Moves in a specified direction");
+        System.out.println("look - Describes the current room and its objects");
+        System.out.println("move <direction> - Moves in a specified direction (north, south, east, west)");
         System.out.println("pick up <item> - Picks up an item from the ground");
-        System.out.println("inventory - Shows your inventory");
-        System.out.println("exit - Exits the game");
+        System.out.println("inventory - Lists the items you are carrying");
+        System.out.println("help - Displays this command list");
+        System.out.println("exit - Ends the game");
+    }
+
+    public static void main(String[] args) {
+        new MUDController().runGameLoop();
     }
 }
